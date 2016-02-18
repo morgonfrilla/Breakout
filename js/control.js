@@ -40,13 +40,17 @@ $(document).ready(function(){
   var brickOffsetTop = 30;
   var brickOffsetLeft = 30;
 
+  // track score and remaining lives
+  var score = 0;
+  var lives = 3;
+
   // create bricks
   var bricks = [];
   for(c = 0; c < brickColumnCount; c++) {
     bricks[c] = [];
 
     for(r = 0; r < brickRowCount; r++) {
-      bricks[c][r] = { x: 0, y: 0 };
+      bricks[c][r] = { x: 0, y: 0, status: 1 };
     }
   }
 
@@ -55,16 +59,18 @@ $(document).ready(function(){
   function drawBricks() {
     for(c=0; c<brickColumnCount; c++) {
       for(r=0; r<brickRowCount; r++) {
-        var brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft;
-        var brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop;
+        if (bricks[c][r].status == 1) {
+          var brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft;
+          var brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop;
 
-        bricks[c][r].x = brickX;
-        bricks[c][r].y = brickY;
-        ctx.beginPath();
-        ctx.rect(brickX, brickY, brickWidth, brickHeight);
-        ctx.fillStyle = "#0095DD";
-        ctx.fill();
-        ctx.closePath();
+          bricks[c][r].x = brickX;
+          bricks[c][r].y = brickY;
+          ctx.beginPath();
+          ctx.rect(brickX, brickY, brickWidth, brickHeight);
+          ctx.fillStyle = "#0095DD";
+          ctx.fill();
+          ctx.closePath();
+        }
       }
     }
   }
@@ -90,6 +96,30 @@ $(document).ready(function(){
   }
 
 
+  // print the score
+  function drawScore() {
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#0095DD";
+    ctx.fillText("Score: "+score, 8, 20);
+  }
+
+
+  // draw the reamining lives
+  function drawLives() {
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#0095DD";
+    ctx.fillText("Lives: "+lives, canvas.width-65, 20);
+  }
+
+
+  // draw the reamining lives
+  function drawGameStatus(text) {
+    ctx.font = "38px Arial";
+    ctx.fillStyle = "#0095DD";
+    ctx.fillText(text, canvas.width/4, canvas.height/2);
+  }
+
+
   // function that produces the animation
   function draw() {
     // clear the canvas before repainting it
@@ -97,6 +127,15 @@ $(document).ready(function(){
     drawBricks();
     drawBall();
     drawPaddle();
+    var won = collisionDetection();
+    drawScore();
+    drawLives();
+    
+
+    if (won) {
+      drawGameStatus("VICTORY");
+      return;
+    }
 
     // update x and y
     x += dx;
@@ -115,8 +154,18 @@ $(document).ready(function(){
         dy = -dy;
       }
       else {
-        alert("GAME OVER");
-        document.location.reload();
+        lives--;
+        if(!lives) {
+            drawGameStatus("GAME OVER");
+            return;
+        }
+        else {
+            x = canvas.width/2;
+            y = canvas.height-30;
+            dx = 2;
+            dy = -2;
+            paddleX = (canvas.width-paddleWidth)/2;
+        }
       }
     }
 
@@ -127,11 +176,17 @@ $(document).ready(function(){
     else if(leftPressed && paddleX > 0) {
       paddleX -= 7;
     }
+
+    requestAnimationFrame(draw);
   }
 
   // listen for key presses
   document.addEventListener("keydown", keyDownHandler, false);
   document.addEventListener("keyup", keyUpHandler, false);
+
+
+  // handle mouseevents
+  document.addEventListener("mousemove", mouseMoveHandler, false);
 
 
   function keyDownHandler(e) {
@@ -154,7 +209,37 @@ $(document).ready(function(){
   }
 
 
+  function mouseMoveHandler(e) {
+    var relativeX = e.clientX - canvas.offsetLeft;
+    if(relativeX > 0 && relativeX < canvas.width) {
+      paddleX = relativeX - paddleWidth/2;
+    }
+  }
+
+
+  // collisions with bricks
+  function collisionDetection() {
+    for(c = 0; c < brickColumnCount; c++) {
+      for(r = 0; r < brickRowCount; r++) {
+        var b = bricks[c][r];
+        if(b.status == 1) {
+          if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
+            dy = -dy;
+            b.status = 0;
+            score++;
+
+            if(score == brickRowCount*brickColumnCount) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+
+
   // infinite function that draws the ball
-  setInterval(draw, 10);
+  draw();
 
 });
